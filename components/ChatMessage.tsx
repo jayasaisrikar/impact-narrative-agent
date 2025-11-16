@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { BotIcon, CopyIcon } from './IconComponents';
 
 interface Message {
@@ -25,12 +24,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLoading = false })
   };
 
   return (
-    <motion.div
+    <div
       className={`flex items-start gap-3 ${isModel ? '' : 'flex-row-reverse'}`}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 6 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
     >
       {isModel ? (
         <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white flex items-center justify-center shadow">
@@ -50,9 +45,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLoading = false })
         >
           {isLoading ? (
             <div className="flex items-center space-x-1">
-              <motion.span className="h-2 w-2 bg-gray-500 rounded-full" animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 0.9, delay: 0 }} />
-              <motion.span className="h-2 w-2 bg-gray-500 rounded-full" animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 0.9, delay: 0.15 }} />
-              <motion.span className="h-2 w-2 bg-gray-500 rounded-full" animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 0.9, delay: 0.3 }} />
+              <span className="h-2 w-2 bg-gray-500 rounded-full" />
+              <span className="h-2 w-2 bg-gray-500 rounded-full" />
+              <span className="h-2 w-2 bg-gray-500 rounded-full" />
             </div>
           ) : (
             <p className="whitespace-pre-wrap">{message.content}</p>
@@ -66,7 +61,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLoading = false })
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
