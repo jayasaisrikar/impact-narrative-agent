@@ -5,12 +5,6 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "public": true,
-  "crons": [
-    {
-      "path": "/api/cron/run-agent",
-      "schedule": "0 0 * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/:path*",
