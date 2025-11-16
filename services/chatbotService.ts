@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import type { Insight } from '../types';
 
 // --- Gemini API Client Initialization ---
-// Note: In development, set VITE_GEMINI_API_KEY in a local `.env` / `.env.local` file.
+// Note: In development, set VITE_GEMINI_API_KEY in the root `.env` file.
 // Be aware: embedding API keys in frontend bundles is not secure. Use a backend proxy for production.
 const GEMINI_API_KEY = (import.meta as any)?.env?.VITE_GEMINI_API_KEY ?? '';
 export const CHAT_PROXY_URL = (import.meta as any)?.env?.VITE_CHAT_PROXY_URL ?? 'http://localhost:8787';

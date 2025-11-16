@@ -182,6 +182,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onViewDemo }) => {
           </div>
         </div>
       </section>
+
+      <footer className="text-center p-6 text-sm text-white/70 border-t border-white/10 bg-black/40">
+        © {new Date().getFullYear()} BlocksBridge Consulting. All rights reserved.
+      </footer>
     </div>
   );
 };

@@ -6,13 +6,13 @@ import type { Post } from "../../types.ts";
 // Fix: Add Deno global type declaration to resolve "Cannot find name 'Deno'" error.
 declare const Deno: any;
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+// Read from VITE_GEMINI_API_KEY or fall back to GEMINI_API_KEY
+const GEMINI_API_KEY = Deno.env.get("VITE_GEMINI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
 if (!GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY environment variable is not set.");
+  throw new Error("VITE_GEMINI_API_KEY or GEMINI_API_KEY environment variable is not set.");
 }
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-
 const insightSchema = {
     type: Type.OBJECT,
     properties: {

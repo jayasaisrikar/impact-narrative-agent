@@ -9,8 +9,10 @@
  * 5. It inserts the new, structured insight into the `insights` table.
  * 
  * To run locally:
- * 1. Create a `.env` file in this directory with your Supabase and Gemini keys.
- * 2. Run `deno run --allow-env --allow-net main.ts`
+ * 1. Create a `.env` file in the project root with your Supabase and Gemini keys.
+ * 2. Run from the project root: `deno run --allow-env --allow-net --allow-read deno-agent/main.ts`
+ * 
+ * Note: Environment variables are loaded from the root .env file via Deno Deploy or system environment.
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -24,7 +26,7 @@ declare const Deno: any;
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_KEY");
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
+const GEMINI_API_KEY = Deno.env.get('VITE_GEMINI_API_KEY') || Deno.env.get('GEMINI_API_KEY') || '';
 function maskKey(key: string): string {
   if (!key || key.length < 10) return `length ${key.length}`;
   return `${key.slice(0, 4)}...${key.slice(-4)} (len=${key.length})`;
@@ -42,25 +44,6 @@ if (GEMINI_API_KEY) {
   console.log('GEMINI_API_KEY provided (masked):', maskKey(GEMINI_API_KEY));
 } else {
   console.warn('GEMINI_API_KEY is not set in the environment. Chat requests will fail with API_KEY_INVALID until you set it.');
-}
-
-// Diagnostic: if there's a `deno-agent/.env` file, read it and report the GEMINI_API_KEY found there too
-try {
-  const envFilePath = new URL('./.env', import.meta.url);
-  const raw = await Deno.readTextFile(envFilePath);
-  const match = raw.match(/^\s*GEMINI_API_KEY\s*=\s*(.+)\s*$/m);
-  if (match && match[1]) {
-    const envFileKey = match[1].trim().replace(/^"|"$/g, '');
-    if (envFileKey) {
-      if (envFileKey !== GEMINI_API_KEY) {
-        console.warn(`GEMINI_API_KEY mismatch: runtime env key (masked) ${maskKey(GEMINI_API_KEY)} does not equal deno-agent/.env key (masked) ${maskKey(envFileKey)}.`);
-      } else {
-        console.log('GEMINI_API_KEY matches deno-agent/.env file (masked):', maskKey(envFileKey));
-      }
-    }
-  }
-} catch (e) {
-  // not critical; ignore if file not found or unreadable
 }
 
 async function processNewPosts() {

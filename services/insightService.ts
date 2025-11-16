@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Insight } from '../types';
 
 // --- Supabase Client Initialization ---
-// Attempt to read Supabase config from Vite env variables (prefix VITE_ for Vite) or from process env
+// Read Supabase config from Vite env variables (prefix VITE_ for browser-safe access)
 function getEnvVar(key: string): string | undefined {
   try {
     if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
@@ -11,14 +11,11 @@ function getEnvVar(key: string): string | undefined {
       if (v) return String(v);
     }
   } catch (ignore) {}
-  if (typeof process !== 'undefined' && (process.env as any)[key]) {
-    return String((process.env as any)[key]);
-  }
   return undefined;
 }
 
-const SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL') || getEnvVar('SUPABASE_URL') || '';
-const SUPABASE_ANON_KEY = (getEnvVar('VITE_SUPABASE_ANON_KEY') || getEnvVar('SUPABASE_ANON_KEY') || '').replace(/^\"|\"$/g, '');
+const SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL') || '';
+const SUPABASE_ANON_KEY = (getEnvVar('VITE_SUPABASE_ANON_KEY') || '').replace(/^\"|\"$/g, '');
 
 // A single Supabase client instance
 let supabase;

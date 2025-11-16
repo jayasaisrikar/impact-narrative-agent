@@ -16,6 +16,7 @@
         "npm:@types/node@^22.14.0",
         "npm:@vitejs/plugin-react@5",
         "npm:react-dom@^19.2.0",
+        "npm:react-router-dom@^6.28.0",
         "npm:react@^19.2.0",
         "npm:typescript@~5.8.2",
         "npm:vite@^6.2.0"
