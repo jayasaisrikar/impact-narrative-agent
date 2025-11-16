@@ -11,31 +11,6 @@
       "schedule": "0 * * * *"
     }
   ],
-  "env": [
-    {
-      "key": "VITE_GEMINI_API_KEY",
-      "description": "Gemini API Key for AI-powered insights and chatbot",
-      "value": "",
-      "type": "secret"
-    },
-    {
-      "key": "VITE_SUPABASE_URL",
-      "description": "Supabase project URL",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "VITE_SUPABASE_ANON_KEY",
-      "description": "Supabase anonymous public key",
-      "value": "",
-      "type": "secret"
-    },
-    {
-      "key": "VITE_CHAT_PROXY_URL",
-      "description": "URL of the backend chat proxy (leave empty for production)",
-      "value": ""
-    }
-  ],
   "rewrites": [
     {
       "source": "/:path*",
