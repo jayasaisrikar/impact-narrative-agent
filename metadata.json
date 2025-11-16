@@ -1,0 +1,5 @@
+{
+  "name": "Impact Narrative Agent",
+  "description": "An application to turn mining industry news into investor-ready insights and narratives using the Gemini API. This is the frontend dashboard for authenticated, subscribed users of BlocksBridge Consulting's SaaS product.",
+  "requestFramePermissions": []
+}
