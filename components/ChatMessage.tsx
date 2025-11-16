@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { BotIcon, CopyIcon } from './IconComponents';
 
 interface Message {
@@ -24,7 +25,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLoading = false })
   };
 
   return (
-    <div className={`flex items-start gap-3 ${isModel ? '' : 'flex-row-reverse'}`}>
+    <motion.div
+      className={`flex items-start gap-3 ${isModel ? '' : 'flex-row-reverse'}`}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+    >
       {isModel ? (
         <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white flex items-center justify-center shadow">
           <BotIcon className="h-5 w-5" />
@@ -42,14 +49,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLoading = false })
           aria-live={isModel ? 'polite' : undefined}
         >
           {isLoading ? (
-          <div className="flex items-center space-x-1">
-              <span className="h-2 w-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-              <span className="h-2 w-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-              <span className="h-2 w-2 bg-gray-500 rounded-full animate-bounce"></span>
-          </div>
-        ) : (
-          <p className="whitespace-pre-wrap">{message.content}</p>
-        )}
+            <div className="flex items-center space-x-1">
+              <motion.span className="h-2 w-2 bg-gray-500 rounded-full" animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 0.9, delay: 0 }} />
+              <motion.span className="h-2 w-2 bg-gray-500 rounded-full" animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 0.9, delay: 0.15 }} />
+              <motion.span className="h-2 w-2 bg-gray-500 rounded-full" animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 0.9, delay: 0.3 }} />
+            </div>
+          ) : (
+            <p className="whitespace-pre-wrap">{message.content}</p>
+          )}
         </div>
 
         <div className={`absolute -bottom-4 ${isModel ? 'left-0' : 'right-0'} flex items-center gap-2 text-xs opacity-80`}>
@@ -59,7 +66,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLoading = false })
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
