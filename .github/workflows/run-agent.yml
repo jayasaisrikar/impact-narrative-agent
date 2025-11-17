@@ -20,7 +20,10 @@ jobs:
         with:
           deno-version: vx.x.x
 
-      - name: Run Impact Narrative Agent
+      - name: Install dependencies
+        run: npm install
+  
+      - name: Run Deno agent
         env:
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
