@@ -8,8 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "run-agent": "deno run --allow-env --allow-net --allow-read --unstable deno-agent/main.ts",
-    "server": "tsx watch server.ts",
-    "start": "node --loader tsx server.ts"
+    "server": "tsx watch server.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.1",
