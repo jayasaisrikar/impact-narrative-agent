@@ -2,5 +2,11 @@
   "name": "impact-narrative-agent",
   "version": 2,
   "buildCommand": "npm run build",
-  "devCommand": "npm run server"
+  "devCommand": "npm run server",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
