@@ -1,7 +1,7 @@
 
 // Fix: Use the recommended '@google/genai' package instead of the deprecated '@google/generative-ai'.
 import { GoogleGenAI, Type } from "npm:@google/genai";
-import type { Post } from "../../types.ts";
+import type { Post, EventType } from "../../types.ts";
 
 // Fix: Add Deno global type declaration to resolve "Cannot find name 'Deno'" error.
 declare const Deno: any;
@@ -31,6 +31,26 @@ const insightSchema = {
         }
     },
     required: ["summary", "implications_investor", "implications_company", "narratives", "event_type"]
+};
+
+const companyInsightSchema = {
+    type: Type.OBJECT,
+    properties: {
+        summary: { type: Type.STRING, description: "A comprehensive summary synthesizing all recent news about this company." },
+        implications_investor: { type: Type.STRING, description: "Analysis of what these developments mean for investors - consolidated perspective across all posts." },
+        implications_company: { type: Type.STRING, description: "Strategic analysis of what these developments mean for the company and its sector." },
+        narratives: {
+            type: Type.ARRAY,
+            description: "An array of 4-6 synthesized narratives that capture the key investment themes and storylines emerging from all posts.",
+            items: { type: Type.STRING }
+        },
+        event_types: {
+            type: Type.ARRAY,
+            description: "List of unique event types found across all posts.",
+            items: { type: Type.STRING }
+        }
+    },
+    required: ["summary", "implications_investor", "implications_company", "narratives", "event_types"]
 };
 
 // Helper: sleep for given milliseconds
@@ -79,6 +99,90 @@ function extractRetryDelaySeconds(err: any): number | null {
     }
   } catch (e) {
     // ignore parse errors
+  }
+  return null;
+}
+
+function buildCompanyInsightPrompt(companyName: string, posts: Post[]): string {
+  const postsText = posts.map((p, i) => `
+    Post ${i + 1}:
+    - Title: "${p.title}"
+    - Summary: "${p.summary}"
+    - Published: ${p.published_date}
+  `).join('\n');
+
+  return `
+    You are a world-class financial analyst specializing in the mining and metals industry, with a focus on providing institutional investor-grade insights.
+    
+    Analyze the following collection of recent news items about ${companyName} and provide a comprehensive, company-level insight that synthesizes all the information.
+    
+    Company: ${companyName}
+    Recent News Items:
+    ${postsText}
+    
+    Based on ALL the information above, generate a structured JSON output that:
+    1. Synthesizes a coherent narrative from all posts
+    2. Identifies overarching themes and patterns
+    3. Provides strategic implications for the company and investors
+    4. Deduplicates and synthesizes narratives - avoid repeating similar themes
+    5. Lists all unique event types present across the posts
+    
+    Be objective, direct, and focus on material insights. This is for sophisticated investors who understand the mining sector.
+  `;
+}
+
+export async function generateCompanyInsightForPosts(companyName: string, posts: Post[]): Promise<any> {
+  if (!posts || posts.length === 0) {
+    console.warn(`Cannot generate company insight for ${companyName}: no posts provided.`);
+    return null;
+  }
+
+  const prompt = buildCompanyInsightPrompt(companyName, posts);
+  const maxRetries = 5;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: companyInsightSchema,
+          temperature: 0.5,
+        },
+      });
+
+      const jsonText = response.text;
+      if (!jsonText) {
+        throw new Error("Gemini API returned an empty response.");
+      }
+
+      const parsedJson = JSON.parse(jsonText);
+      return parsedJson;
+
+    } catch (error: any) {
+      // Determine whether to retry
+      const status = error?.status ?? error?.error?.code ?? error?.error?.status;
+      const isRateLimit = status === 429 || (error?.message && /quota|rate limit|RESOURCE_EXHAUSTED/i.test(error.message));
+
+      console.error(`Error generating company insight for ${companyName} (attempt ${attempt}):`, error?.message ?? error);
+
+      if (error?.message && error.message.includes('SAFETY')) {
+        console.warn('Content was blocked due to safety settings. Not retrying.');
+        return null;
+      }
+
+      if (isRateLimit && attempt < maxRetries) {
+        const retrySeconds = extractRetryDelaySeconds(error) ?? Math.min(60, Math.pow(2, attempt + 1));
+        const waitMs = Math.ceil(retrySeconds * 1000);
+        console.warn(`Rate limit / quota exceeded. Retrying in ${retrySeconds}s (attempt ${attempt + 1}/${maxRetries})...`);
+        await sleep(waitMs);
+        continue;
+      }
+
+      console.error(`Failed to generate company insight for ${companyName}. ${attempt >= maxRetries ? 'Max retries reached.' : 'Not retrying.'}`);
+      return null;
+    }
   }
   return null;
 }

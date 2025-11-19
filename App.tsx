@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
-import type { Insight } from './types';
+import type { Insight, CompanyInsight } from './types';
 import { fetchInsights } from './services/insightService';
 import Navbar from './components/Navbar';
 import DashboardPage from './pages/DashboardPage';
@@ -41,8 +41,22 @@ const AppContent: React.FC<{ paymentsEnabled: boolean }> = ({ paymentsEnabled })
     loadInsights();
   }, [loadInsights]);
 
-  const handleSelectInsight = (insight: Insight) => {
-    navigate(`/insight/${insight.id}`);
+  const handleSelectInsight = (insight: Insight | CompanyInsight) => {
+    // For company insights, navigate to the first related post's detail
+    if ('company_ticker' in insight && 'posts' in insight) {
+      const companyInsight = insight as CompanyInsight;
+      if (companyInsight.posts && companyInsight.posts.length > 0) {
+        // Find an insight related to the first post
+        const firstPostId = companyInsight.posts[0].id;
+        const relatedInsight = insights.find(i => i.post_id === firstPostId);
+        if (relatedInsight) {
+          navigate(`/insight/${relatedInsight.id}`);
+        }
+      }
+    } else {
+      // For regular insights, navigate normally
+      navigate(`/insight/${(insight as Insight).id}`);
+    }
   };
 
   const handleRefresh = () => {

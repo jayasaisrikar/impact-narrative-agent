@@ -1,6 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
-import type { Insight } from '../types';
+import type { Insight, CompanyInsight } from '../types';
+import { extractCompanyTicker, getCompanyName } from '../utils/companyUtils';
 
 // --- Supabase Client Initialization ---
 // Read Supabase config from Vite env variables (prefix VITE_ for browser-safe access)
@@ -51,6 +52,7 @@ export const fetchInsights = async (): Promise<Insight[]> => {
       narratives,
       event_type,
       created_at,
+      company_ticker,
       post:latest_posts (
         id,
         title,
@@ -67,16 +69,97 @@ export const fetchInsights = async (): Promise<Insight[]> => {
     throw new Error(error.message || "Unknown error fetching insights from Supabase");
   }
 
-  // Normalize post fields: support posts that have `published_at` (legacy) or `published_date`.
+  // Normalize post fields and extract company ticker if not already set
   const normalized = (data as any[] || []).map(insight => {
     if (insight.post) {
       if (!insight.post.published_date && insight.post.published_at) {
         insight.post.published_date = insight.post.published_at;
       }
     }
+    // Extract company ticker if not already in database
+    if (!insight.company_ticker && insight.post) {
+      insight.company_ticker = extractCompanyTicker(insight.post.title, insight.post.summary);
+    }
     return insight;
   });
 
   // Filter out any insights where the related post might be null (e.g., if it was deleted).
   return normalized.filter(insight => insight.post) as Insight[];
+};
+
+/**
+ * Group insights by company ticker and create company-level insights
+ * Returns insights grouped by company, with company metadata and aggregated information
+ */
+export const groupInsightsByCompany = (insights: Insight[]): CompanyInsight[] => {
+  const groupedByTicker = new Map<string, Insight[]>();
+
+  // Group insights by company_ticker
+  for (const insight of insights) {
+    const ticker = insight.company_ticker || 'Unknown';
+    if (!groupedByTicker.has(ticker)) {
+      groupedByTicker.set(ticker, []);
+    }
+    groupedByTicker.get(ticker)!.push(insight);
+  }
+
+  // Convert grouped data into CompanyInsight objects
+  const companyInsights: CompanyInsight[] = [];
+
+  for (const [ticker, insightsForCompany] of groupedByTicker.entries()) {
+    // Collect all unique event types
+    const eventTypes = Array.from(new Set(insightsForCompany.map(i => i.event_type)));
+
+    // Synthesize narratives - deduplicate similar ones and keep most relevant
+    const allNarratives = insightsForCompany.flatMap(i => i.narratives);
+    const uniqueNarratives = Array.from(new Set(allNarratives.map(n => n.toLowerCase())))
+      .slice(0, 6)
+      .map(n => {
+        // Return the original casing for the first occurrence
+        return insightsForCompany
+          .flatMap(i => i.narratives)
+          .find(narrative => narrative.toLowerCase() === n) || n;
+      });
+
+    // Get the most recent post date
+    const latestPostDate = insightsForCompany
+      .map(i => i.post.published_date)
+      .sort()
+      .reverse()[0] || new Date().toISOString();
+
+    // Collect all related posts
+    const posts = insightsForCompany
+      .map(i => i.post)
+      .sort((a, b) => new Date(b.published_date).getTime() - new Date(a.published_date).getTime());
+
+    // Synthesize summary and implications from all insights
+    const summaries = insightsForCompany.map(i => i.summary);
+    const investorImplications = insightsForCompany.map(i => i.implications_investor);
+    const companyImplications = insightsForCompany.map(i => i.implications_company);
+
+    // Create company insight by combining first insight with aggregated data
+    const firstInsight = insightsForCompany[0];
+    const companyInsight: CompanyInsight = {
+      company_ticker: ticker,
+      company_name: getCompanyName(ticker),
+      summary: `${ticker} is experiencing multiple developments: ${summaries.slice(0, 2).join('; ')}${insightsForCompany.length > 2 ? '; and more.' : '.'}`,
+      implications_investor: firstInsight.implications_investor,
+      implications_company: firstInsight.implications_company,
+      narratives: uniqueNarratives,
+      event_types: eventTypes,
+      related_post_count: insightsForCompany.length,
+      latest_post_date: latestPostDate,
+      posts: posts,
+      created_at: insightsForCompany[0].created_at,
+    };
+
+    companyInsights.push(companyInsight);
+  }
+
+  // Sort by latest post date (most recent first)
+  companyInsights.sort((a, b) => 
+    new Date(b.latest_post_date).getTime() - new Date(a.latest_post_date).getTime()
+  );
+
+  return companyInsights;
 };
