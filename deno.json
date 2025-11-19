@@ -10,6 +10,16 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
-    "lib": ["deno.window"]
+    "lib": [
+      "deno.window"
+    ]
+  },
+  "deploy": {
+    "project": "443d6d14-1eae-470e-8d9a-c3cc39f7e6b6",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [],
+    "entrypoint": "deno-agent\\cron.ts"
   }
 }

@@ -6,6 +6,7 @@ import { fetchInsights } from './services/insightService';
 import Navbar from './components/Navbar';
 import DashboardPage from './pages/DashboardPage';
 import DetailPage from './pages/DetailPage';
+import CompanyDetailPage from './pages/CompanyDetailPage';
 import ChatbotPage from './pages/ChatbotPage';
 import LandingPage from './pages/LandingPage';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -42,19 +43,9 @@ const AppContent: React.FC<{ paymentsEnabled: boolean }> = ({ paymentsEnabled })
   }, [loadInsights]);
 
   const handleSelectInsight = (insight: Insight | CompanyInsight) => {
-    // For company insights, navigate to the first related post's detail
     if ('company_ticker' in insight && 'posts' in insight) {
-      const companyInsight = insight as CompanyInsight;
-      if (companyInsight.posts && companyInsight.posts.length > 0) {
-        // Find an insight related to the first post
-        const firstPostId = companyInsight.posts[0].id;
-        const relatedInsight = insights.find(i => i.post_id === firstPostId);
-        if (relatedInsight) {
-          navigate(`/insight/${relatedInsight.id}`);
-        }
-      }
+      navigate(`/company/${(insight as CompanyInsight).company_ticker}`);
     } else {
-      // For regular insights, navigate normally
       navigate(`/insight/${(insight as Insight).id}`);
     }
   };
@@ -132,6 +123,7 @@ const AppContent: React.FC<{ paymentsEnabled: boolean }> = ({ paymentsEnabled })
                 }
               />
               <Route path="/insight/:insightId" element={<InsightDetailRoute insights={insights} onBack={handleBackToDashboard} />} />
+              <Route path="/company/:ticker" element={<CompanyDetailRoute onBack={handleBackToDashboard} />} />
               <Route
                 path="/chatbot"
                 element={
@@ -181,6 +173,30 @@ const InsightDetailRoute: React.FC<InsightDetailRouteProps> = ({ insights, onBac
   }
 
   return <DetailPage insight={insight} onBack={onBack} />;
+};
+
+interface CompanyDetailRouteProps {
+  onBack: () => void;
+}
+
+const CompanyDetailRoute: React.FC<CompanyDetailRouteProps> = ({ onBack }) => {
+  const { ticker } = useParams<{ ticker: string }>();
+
+  if (!ticker) {
+    return (
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-text-primary mb-4">Invalid Ticker</h2>
+        <button
+          onClick={onBack}
+          className="px-6 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-dark transition-colors"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  return <CompanyDetailPage ticker={ticker} onBack={onBack} />;
 };
 
 const App: React.FC<AppProps> = ({ paymentsEnabled }) => {

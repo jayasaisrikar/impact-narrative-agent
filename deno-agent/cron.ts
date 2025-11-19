@@ -6,26 +6,20 @@
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { generateInsightForPost, generateChatResponse, validateApiKey } from "./services/geminiService.ts";
+import { generateInsightForPost, generateCompanyInsightForPosts } from "./services/geminiService.ts";
+import { extractCompanyTicker, getCompanyName } from "./utils/companyUtils.ts";
 
 declare const Deno: any;
 
-// Load environment variables
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_KEY");
-const GEMINI_API_KEY = Deno.env.get('VITE_GEMINI_API_KEY') || Deno.env.get('GEMINI_API_KEY') || '';
 
-// Initialize Supabase
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-/**
- * Main function to process new posts
- */
 async function processNewPosts() {
   console.log(`[${new Date().toISOString()}] Starting scheduled post processing...`);
 
   try {
-    // 1. Fetch post_ids that already have insights
     const { data: insightPostIds, error: insightError } = await supabase
       .from("insights")
       .select("post_id");
@@ -38,8 +32,7 @@ async function processNewPosts() {
     const processedPostIds = (insightPostIds || []).map(i => i.post_id);
     console.log(`Processed posts: ${processedPostIds.length}`);
 
-    // 2. Fetch new posts that need insights
-    let postsQuery = supabase.from("latest_posts").select("*").limit(10);
+    let postsQuery = supabase.from("latest_posts").select("*").limit(50);
     if (processedPostIds && processedPostIds.length > 0) {
       const formattedIds = processedPostIds
         .filter(Boolean)
@@ -62,37 +55,120 @@ async function processNewPosts() {
 
     console.log(`Processing ${newPosts.length} new posts...`);
 
-    // 3. For each new post, generate an insight
     for (const post of newPosts) {
       try {
-        console.log(`  → Processing post #${post.id}: ${post.title.slice(0, 50)}...`);
-        
         const insight = await generateInsightForPost(post);
+        if (!insight) {
+          console.warn(`Skipping post #${post.id}: no insight generated`);
+          continue;
+        }
+
+        const ticker = extractCompanyTicker(post.title, post.summary);
         
-        // 4. Insert the insight into the database
         const { error: insertError } = await supabase
           .from("insights")
           .insert([{
             post_id: post.id,
-            insight: insight.insight,
-            sentiment: insight.sentiment,
-            tags: insight.tags,
-            risk_level: insight.risk_level,
+            summary: insight.summary,
+            implications_investor: insight.implications_investor,
+            implications_company: insight.implications_company,
+            narratives: insight.narratives,
+            event_type: insight.event_type,
+            company_ticker: ticker,
           }]);
 
         if (insertError) {
-          console.error(`    ✗ Error inserting insight for post #${post.id}:`, insertError);
+          console.error(`Error inserting insight for post #${post.id}:`, insertError);
         } else {
-          console.log(`    ✓ Insight generated for post #${post.id}`);
+          console.log(`✓ Insight generated for post #${post.id}`);
         }
       } catch (error) {
-        console.error(`  ✗ Error processing post #${post.id}:`, error);
+        console.error(`Error processing post #${post.id}:`, error);
       }
     }
 
+    await generateCompanyInsights();
     console.log(`✅ Batch processing completed at ${new Date().toISOString()}`);
   } catch (error) {
     console.error("Fatal error in processNewPosts:", error);
+  }
+}
+
+async function generateCompanyInsights() {
+  console.log("Generating company-level insights...");
+
+  try {
+    const { data: insights, error } = await supabase
+      .from("insights")
+      .select("*");
+
+    if (error) {
+      console.error("Error fetching insights:", error);
+      return;
+    }
+
+    const groupedByTicker = new Map<string, any[]>();
+    
+    for (const insight of insights || []) {
+      const ticker = insight.company_ticker || 'Unknown';
+      if (!groupedByTicker.has(ticker)) {
+        groupedByTicker.set(ticker, []);
+      }
+      groupedByTicker.get(ticker)!.push(insight);
+    }
+
+    for (const [ticker, insightsForCompany] of groupedByTicker.entries()) {
+      if (ticker === 'Unknown' || insightsForCompany.length === 0) continue;
+
+      try {
+        const { data: posts, error: postsError } = await supabase
+          .from("latest_posts")
+          .select("*")
+          .in("id", insightsForCompany.map(i => i.post_id));
+
+        if (postsError || !posts) {
+          console.warn(`Failed to fetch posts for ${ticker}`);
+          continue;
+        }
+
+        const companyName = getCompanyName(ticker);
+        const companyInsight = await generateCompanyInsightForPosts(companyName, posts);
+
+        if (!companyInsight) {
+          console.warn(`Failed to generate company insight for ${ticker}`);
+          continue;
+        }
+
+        const latestPostDate = posts
+          .map(p => new Date(p.published_date).getTime())
+          .sort((a, b) => b - a)[0] || new Date().getTime();
+
+        const { error: upsertError } = await supabase
+          .from("company_insights")
+          .upsert([{
+            company_ticker: ticker,
+            summary: companyInsight.summary,
+            implications_investor: companyInsight.implications_investor,
+            implications_company: companyInsight.implications_company,
+            narratives: companyInsight.narratives,
+            event_types: companyInsight.event_types,
+            related_post_count: insightsForCompany.length,
+            latest_post_date: new Date(latestPostDate).toISOString(),
+            updated_at: new Date().toISOString(),
+          }], 
+          { onConflict: 'company_ticker' });
+
+        if (upsertError) {
+          console.error(`Error upserting company insight for ${ticker}:`, upsertError);
+        } else {
+          console.log(`✓ Company insight updated for ${ticker}`);
+        }
+      } catch (error) {
+        console.error(`Error processing company insight for ${ticker}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error("Error generating company insights:", error);
   }
 }
 
