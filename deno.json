@@ -1,0 +1,15 @@
+{
+  "tasks": {
+    "agent": "deno run --allow-env --allow-net --allow-read --unstable deno-agent/main.ts"
+  },
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "@google/genai": "npm:@google/genai@^1.29.1",
+    "std/": "https://deno.land/std@0.224.0/"
+  },
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "lib": ["deno.window"]
+  }
+}

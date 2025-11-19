@@ -84,11 +84,23 @@ const Chatbot: React.FC<ChatbotProps> = ({ contextInsights }) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
     if (!available) {
-      const envMsg = initError
-        ? `The chat agent could not be initialized: ${initError}. Use a server-side agent or fix the client library/environment.`
-        : 'The dialog agent is not configured. Please set VITE_GEMINI_API_KEY in your environment or use the hosted Deno agent.';
-      setError(envMsg);
-      setMessages(prev => [...prev, { role: 'model', content: envMsg }]);
+      let errorMsg = '';
+      if (initError) {
+        errorMsg = `The chat agent could not be initialized: ${initError}`;
+      } else {
+        errorMsg = 'The chat agent is not configured.';
+      }
+      
+      // Add helpful troubleshooting tips
+      let helpMsg = errorMsg;
+      if (chatProxyUrl && errorMsg.includes('Failed to fetch')) {
+        helpMsg = `${errorMsg}\n\n💡 Troubleshooting:\n- Is the Deno agent running? Start it with: deno run --allow-env --allow-net --allow-read --unstable deno-agent/main.ts\n- Agent should be at: ${chatProxyUrl}\n- Check VITE_CHAT_PROXY_URL in your .env file`;
+      } else if (!chatProxyUrl) {
+        helpMsg = `${errorMsg}\n\n💡 Set VITE_CHAT_PROXY_URL=http://localhost:8787 in your .env file and restart the dev server`;
+      }
+      
+      setError(helpMsg);
+      setMessages(prev => [...prev, { role: 'model', content: helpMsg, timestamp: new Date().toLocaleTimeString() }]);
       return;
     }
 

@@ -104,7 +104,16 @@ export const getChatbotResponse = async (question: string, contextInsights: Insi
             throw new Error(json?.error ?? `Proxy returned status ${resp.status}`);
         } catch (err) {
             console.error('Proxy call failed:', err);
-            throw new Error(`Gemini API key is not configured or reachable via client library. Proxy call failed: ${err}`);
+            const errMsg = err instanceof Error ? err.message : String(err);
+            
+            // Provide helpful error messages
+            if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+                throw new Error(
+                  `Cannot connect to chat proxy at ${CHAT_PROXY_URL}. ` +
+                  `Start the Deno agent: deno run --allow-env --allow-net --allow-read --unstable deno-agent/main.ts`
+                );
+            }
+            throw new Error(`Chat proxy error: ${errMsg}`);
         }
     }
 

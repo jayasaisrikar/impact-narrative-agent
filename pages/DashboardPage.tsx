@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import type { Insight } from '../types';
+import type { Insight, CompanyInsight } from '../types';
 import InsightCard from '../components/InsightCard';
 import { RefreshIcon } from '../components/IconComponents';
 import Pagination from '../components/Pagination';
+import { groupInsightsByCompany } from '../services/insightService';
 
 interface DashboardPageProps {
   insights: Insight[];
-  onSelectInsight: (insight: Insight) => void;
+  onSelectInsight: (insight: Insight | CompanyInsight) => void;
   paymentsEnabled: boolean;
   onRefresh: () => void;
   onOpenChatbot?: () => void;
@@ -36,16 +37,29 @@ const SubscribeButton: React.FC<{ paymentsEnabled: boolean; }> = ({ paymentsEnab
 const DashboardPage: React.FC<DashboardPageProps> = ({ insights, onSelectInsight, paymentsEnabled, onRefresh, onOpenChatbot }) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(6);
+  const [viewMode, setViewMode] = useState<'company' | 'post'>('company');
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(insights.length / pageSize)), [insights.length, pageSize]);
+  // Group insights by company
+  const companyInsights = useMemo(() => {
+    return groupInsightsByCompany(insights);
+  }, [insights]);
+
+  // Use appropriate data based on view mode
+  const displayData = viewMode === 'company' ? companyInsights : insights;
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(displayData.length / pageSize)), [displayData.length, pageSize]);
 
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return insights.slice(start, start + pageSize);
-  }, [insights, currentPage, pageSize]);
+    return displayData.slice(start, start + pageSize);
+  }, [displayData, currentPage, pageSize]);
 
   // keep current page valid when pageSize or insights change
   if (currentPage > totalPages) setCurrentPage(totalPages);
+
+  const handleViewModeChange = (mode: 'company' | 'post') => {
+    setViewMode(mode);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -70,9 +84,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ insights, onSelectInsight
             </div>
             <div className="flex items-center justify-between gap-4 rounded-2xl border border-blue-200 bg-white/90 p-5 shadow">
               <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-blue-500">Insights</p>
-                <p className="text-3xl font-bold text-blue-600">{insights.length}</p>
-                <p className="text-sm text-text-secondary">Latest 30 days</p>
+                <p className="text-xs uppercase tracking-[0.4em] text-blue-500">Companies</p>
+                <p className="text-3xl font-bold text-blue-600">{companyInsights.length}</p>
+                <p className="text-sm text-text-secondary">With insights</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Freshness</p>
@@ -86,14 +100,39 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ insights, onSelectInsight
         {/* Insights Feed Section */}
         <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-lg shadow-slate-200/40 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-bold text-text-primary">Latest Insights Feed</h2>
+            <h2 className="text-xl font-bold text-text-primary">
+              {viewMode === 'company' ? 'Company Insights Feed' : 'Post-Level Insights Feed'}
+            </h2>
             <p className="text-sm text-text-secondary mt-1">
-              Showing <span className="font-medium">{insights.length}</span> insights — page <span className="font-medium">{currentPage}</span> of{' '}
-              <span className="font-medium">{totalPages}</span>
+              Showing <span className="font-medium">{displayData.length}</span> {viewMode === 'company' ? 'companies' : 'insights'} — page{' '}
+              <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span>
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="flex gap-2 rounded-full border border-gray-200 p-1 bg-gray-50">
+              <button
+                onClick={() => handleViewModeChange('company')}
+                className={`rounded-full px-4 py-1 text-sm font-semibold transition ${
+                  viewMode === 'company'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-text-secondary hover:text-blue-600'
+                }`}
+              >
+                By Company
+              </button>
+              <button
+                onClick={() => handleViewModeChange('post')}
+                className={`rounded-full px-4 py-1 text-sm font-semibold transition ${
+                  viewMode === 'post'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-text-secondary hover:text-blue-600'
+                }`}
+              >
+                By Post
+              </button>
+            </div>
+
             <label className="text-sm text-text-secondary">Per page:</label>
             <select
               value={pageSize}
@@ -120,11 +159,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ insights, onSelectInsight
           </div>
         </div>
 
-        {insights.length > 0 ? (
+        {displayData.length > 0 ? (
           <>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {paginated.map((insight) => (
-                <InsightCard key={insight.id} insight={insight} onSelect={onSelectInsight} />
+              {paginated.map((item) => (
+                <InsightCard 
+                  key={'company_ticker' in item ? item.company_ticker : item.id}
+                  insight={item}
+                  onSelect={onSelectInsight}
+                  isCompanyLevel={viewMode === 'company'}
+                />
               ))}
             </div>
 

@@ -16,16 +16,34 @@
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import "https://deno.land/std@0.224.0/dotenv/load.ts";
+// Load .env if present, but don't fail the process if example vars are missing.
+// Previously a static import caused a hard crash when the example file
+// declared variables that weren't provided in the environment. Use a
+// dynamic import and ignore load-time errors so local missing env vars
+// won't terminate the process on Deno Deploy.
+try {
+  // top-level await is supported in Deno modules
+  await import("https://deno.land/std@0.224.0/dotenv/load.ts");
+} catch (e) {
+  // If dotenv fails because required example vars are missing, continue without loading .env
+  console.warn("Optional .env load skipped or failed:", e?.message ?? e);
+}
 import { generateInsightForPost, generateChatResponse, validateApiKey } from "./services/geminiService.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import type { Post } from "../types.ts";
+import { extractCompanyTicker } from "./utils/companyUtils.ts";
 
 // Fix: Add Deno global type declaration to resolve "Cannot find name 'Deno'" error.
 declare const Deno: any;
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_KEY");
+// Accept either server-style names (SUPABASE_URL / SUPABASE_SERVICE_KEY)
+// or Vite-style names (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) so
+// local `.env` files created for the frontend still work for local dev.
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL");
+let supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_KEY") || Deno.env.get("VITE_SUPABASE_ANON_KEY");
+if (!Deno.env.get("SUPABASE_SERVICE_KEY") && Deno.env.get("VITE_SUPABASE_ANON_KEY")) {
+  console.warn("Using VITE_SUPABASE_ANON_KEY as Supabase key fallback. For server-side tasks prefer SUPABASE_SERVICE_KEY.");
+}
 const GEMINI_API_KEY = Deno.env.get('VITE_GEMINI_API_KEY') || Deno.env.get('GEMINI_API_KEY') || '';
 function maskKey(key: string): string {
   if (!key || key.length < 10) return `length ${key.length}`;
@@ -113,16 +131,20 @@ async function processNewPosts() {
       const insightData = await generateInsightForPost(post);
 
       if (insightData) {
+        // Extract company ticker from post title/summary
+        const companyTicker = extractCompanyTicker(post.title, post.summary);
+        
         // 4. Insert into insights table
         const { error: insertError } = await supabase.from("insights").insert({
           post_id: post.id,
+          company_ticker: companyTicker,
           ...insightData,
         });
 
         if (insertError) {
           console.error(`Failed to insert insight for post ${post.id}:`, insertError);
         } else {
-          console.log(`Successfully generated and saved insight for post ${post.id}.`);
+          console.log(`Successfully generated and saved insight for post ${post.id}${companyTicker ? ` (company: ${companyTicker})` : ''}.`);
         }
       }
     } catch (e) {

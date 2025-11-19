@@ -27,4 +27,19 @@ export interface Insight {
   narratives: string[];
   event_type: EventType;
   created_at: string;
+  company_ticker?: string; // Extracted company ticker for company-level grouping
+}
+
+export interface CompanyInsight {
+  company_ticker: string;
+  company_name?: string;
+  summary: string; // Comprehensive company-level summary
+  implications_investor: string;
+  implications_company: string;
+  narratives: string[]; // Synthesized narratives
+  event_types: EventType[]; // Array of event types across all related posts
+  related_post_count: number;
+  latest_post_date: string;
+  posts: Post[]; // All related posts
+  created_at: string;
 }
