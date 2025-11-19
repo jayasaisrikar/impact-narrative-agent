@@ -20,12 +20,17 @@
         "npm:@types/node@^22.14.0",
         "npm:@vercel/node@^5.5.6",
         "npm:@vitejs/plugin-react@5",
+        "npm:cors@^2.8.5",
+        "npm:dotenv@^17.2.3",
+        "npm:express@^5.1.0",
         "npm:framer-motion@^11.0.8",
+        "npm:helmet@^8.1.0",
         "npm:lucide-react@0.416",
         "npm:react-dom@^19.2.0",
         "npm:react-router-dom@^6.28.0",
         "npm:react@^19.2.0",
         "npm:recharts@^2.10.3",
+        "npm:tsx@^4.20.6",
         "npm:typescript@~5.8.2",
         "npm:vite@^6.2.0"
       ]

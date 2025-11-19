@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "run-agent": "deno run --allow-env --allow-net --allow-read --unstable deno-agent/main.ts",
+    "run-agent": "node run-agent.js",
     "server": "tsx watch server.ts"
   },
   "dependencies": {
