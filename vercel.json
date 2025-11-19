@@ -2,5 +2,17 @@
   "name": "impact-narrative-agent",
   "version": 2,
   "buildCommand": "npm run build",
-  "devCommand": "npm run server"
+  "devCommand": "npm run server",
+  "functions": {
+    "api/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api|health|assets).*)",
+      "destination": "/index.html"
+    }
+  ]
 }
