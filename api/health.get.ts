@@ -25,5 +25,6 @@ function sendResponse<T>(res: VercelResponse, data: T | null, error: string | nu
 }
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Content-Type', 'application/json');
   sendResponse(res, { status: 'operational' });
 }

@@ -26,9 +26,7 @@ function sendResponse<T>(res: VercelResponse, data: T | null, error: string | nu
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return sendResponse(res, null, 'Method not allowed', 405);
-  }
+  res.setHeader('Content-Type', 'application/json');
 
   try {
     const { company_summary } = req.body;
