@@ -5,7 +5,15 @@
   "devCommand": "npm run server",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "/health"
+    },
+    {
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
