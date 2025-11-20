@@ -109,20 +109,15 @@ app.post('/api/v1/summarize', async (req: Request, res: Response) => {
 const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath));
 
-// Fallback to index.html for client-side routing
-app.get('*', (req: Request, res: Response) => {
-  // Only serve index.html for non-API routes
-  if (!req.path.startsWith('/api') && !req.path.startsWith('/health')) {
-    res.sendFile(path.join(distPath, 'index.html'), (err) => {
-      if (err) {
-        sendResponse(res, null, 'Frontend not found', 404);
-      }
-    });
-    return;
-  }
-  
-  // 404 for API routes
-  sendResponse(res, null, `Route not found: ${req.method} ${req.path}`, 404);
+// Fallback to index.html for client-side routing (must be last)
+app.use((req: Request, res: Response) => {
+  const indexPath = path.join(distPath, 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error('Error sending index.html:', err);
+      sendResponse(res, null, 'Frontend not found', 404);
+    }
+  });
 });
 
 // Error Handler

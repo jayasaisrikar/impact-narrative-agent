@@ -10,24 +10,12 @@
  * 
  * To run locally:
  * 1. Create a `.env` file in the project root with your Supabase and Gemini keys.
- * 2. Run from the project root: `deno run --allow-env --allow-net --allow-read deno-agent/main.ts`
+ * 2. Run from the project root: `npm run run-agent`
  * 
- * Note: Environment variables are loaded from the root .env file via Deno Deploy or system environment.
+ * Note: Environment variables are loaded from the root .env file via run-agent.js wrapper
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-// Load .env if present, but don't fail the process if example vars are missing.
-// Previously a static import caused a hard crash when the example file
-// declared variables that weren't provided in the environment. Use a
-// dynamic import and ignore load-time errors so local missing env vars
-// won't terminate the process on Deno Deploy.
-try {
-  // top-level await is supported in Deno modules
-  await import("https://deno.land/std@0.224.0/dotenv/load.ts");
-} catch (e) {
-  // If dotenv fails because required example vars are missing, continue without loading .env
-  console.warn("Optional .env load skipped or failed:", e?.message ?? e);
-}
 import { generateInsightForPost, generateChatResponse, validateApiKey } from "./services/geminiService.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import type { Post } from "../types.ts";
@@ -41,6 +29,16 @@ declare const Deno: any;
 // local `.env` files created for the frontend still work for local dev.
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL");
 let supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_KEY") || Deno.env.get("VITE_SUPABASE_ANON_KEY");
+
+// Verify we have Supabase credentials
+if (supabaseUrl && supabaseServiceKey) {
+  console.log("✅ Supabase credentials found - processNewPosts will be enabled");
+} else {
+  console.warn("⚠️  Supabase URL and/or Service Key were not provided in environment variables. Supabase tasks will be disabled. The HTTP chat endpoint will still run.");
+  if (!supabaseUrl) console.warn("   Missing: SUPABASE_URL or VITE_SUPABASE_URL");
+  if (!supabaseServiceKey) console.warn("   Missing: SUPABASE_SERVICE_KEY or VITE_SUPABASE_ANON_KEY");
+}
+
 if (!Deno.env.get("SUPABASE_SERVICE_KEY") && Deno.env.get("VITE_SUPABASE_ANON_KEY")) {
   console.warn("Using VITE_SUPABASE_ANON_KEY as Supabase key fallback. For server-side tasks prefer SUPABASE_SERVICE_KEY.");
 }
@@ -52,11 +50,10 @@ function maskKey(key: string): string {
 
 let supabase: any | undefined;
 let supabaseEnabled = false;
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.warn("Supabase URL and/or Service Key were not provided in environment variables. Supabase tasks will be disabled. The HTTP chat endpoint will still run.");
-} else {
+if (supabaseUrl && supabaseServiceKey) {
   supabase = createClient(supabaseUrl, supabaseServiceKey);
   supabaseEnabled = true;
+  console.log("🗄️  Supabase client initialized successfully");
 }
 if (GEMINI_API_KEY) {
   console.log('GEMINI_API_KEY provided (masked):', maskKey(GEMINI_API_KEY));
