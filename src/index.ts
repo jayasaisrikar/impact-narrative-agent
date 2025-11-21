@@ -107,6 +107,64 @@ app.get('/api/insights/status', async (req, res) => {
   }
 });
 
+app.get('/api/company/:ticker/narratives', async (req, res) => {
+  try {
+    const { ticker } = req.params;
+    const { supabase } = await import('./lib/supabase.js');
+    
+    const { data, error } = await supabase
+      .from('company_insights')
+      .select('narratives')
+      .eq('company_ticker', ticker.toUpperCase())
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: `No insights found for ticker ${ticker.toUpperCase()}` });
+      }
+      throw error;
+    }
+
+    res.json({
+      ticker: ticker.toUpperCase(),
+      narratives: data?.narratives || []
+    });
+  } catch (error: any) {
+    console.error('Error fetching narratives:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/company/:ticker/summary', async (req, res) => {
+  try {
+    const { ticker } = req.params;
+    const { supabase } = await import('./lib/supabase.js');
+    
+    const { data, error } = await supabase
+      .from('company_insights')
+      .select('summary, implications_investor, implications_company')
+      .eq('company_ticker', ticker.toUpperCase())
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: `No insights found for ticker ${ticker.toUpperCase()}` });
+      }
+      throw error;
+    }
+
+    res.json({
+      ticker: ticker.toUpperCase(),
+      summary: data?.summary || '',
+      implications_investor: data?.implications_investor || '',
+      implications_company: data?.implications_company || ''
+    });
+  } catch (error: any) {
+    console.error('Error fetching summary:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Impact Narrative Agent running on port ${port}`);
 });
